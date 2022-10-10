@@ -1,6 +1,7 @@
 const yargs = require("yargs");
 const https = require("https");
 const http = require("http");
+const crypto = require("crypto");
 const fs = require("fs");
 const ws = require("ws");
 
@@ -8,19 +9,50 @@ const argv = yargs
     .default("cert", "")
     .default("key", "")
     .default("port", "")
+    .default("turn-secret", "")
+    .config()
     .argv
 
 let server;
+
+function serverRequest(req, res) {
+    switch (req.url) {
+        case "/turn_credentials":
+            res.setHeader("Content-Type", "application/json");
+            res.writeHead(200);
+
+            const ttl = 86400; // seconds (so 24 hours)
+            const expirationTimestamp = Math.floor(Date.now()/1000) + ttl;
+            const username = `${expirationTimestamp}:listentogether`;
+
+            const hmac = crypto.createHmac("sha1", argv.turnSecret);
+            hmac.setEncoding("base64");
+            hmac.write(username);
+            hmac.end()
+            const password = hmac.read();
+
+            res.end(JSON.stringify({
+                username: username,
+                password: password,
+                ttl: ttl
+            }));
+
+            break;
+        default:
+            res.writeHead(404);
+            res.end();
+    }
+}
 
 function httpsServer(cert, key) {
     server = https.createServer({
         cert: cert,
         key: key
-    });
+    }, serverRequest);
 }
 
 function httpServer() {
-    server = http.createServer();
+    server = http.createServer(serverRequest);
 }
 
 if (argv.cert !== "" && argv.key !== "") {
