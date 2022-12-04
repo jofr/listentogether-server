@@ -2,15 +2,28 @@
   "name": "listen_together_signaling_server",
   "version": "0.1",
   "bin": "./dist/server.js",
+  "type": "module",
   "scripts": {
     "build": "tsc"
   },
   "dependencies": {
+    "@jofr/express-turn-credentials-rest-api": "^1.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "follow-redirects": "^1.15.2",
+    "podcast-index-api": "^1.1.10",
+    "sharp": "^0.31.1",
     "ws": "^8.9.0",
     "yargs": "^17.6.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.12",
+    "@types/express": "^4.17.14",
+    "@types/follow-redirects": "^1.14.1",
     "@types/node": "^18.8.3",
+    "@types/sharp": "^0.31.0",
+    "@types/ws": "^8.5.3",
+    "@types/yargs": "^17.0.13",
     "typescript": "^4.8.4"
   }
 }

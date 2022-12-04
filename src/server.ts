@@ -1,58 +1,48 @@
-const util = require("node:util")
-const https = require("node:https");
-const http = require("node:http");
-const crypto = require("node:crypto");
-const fs = require("node:fs");
-const yargs = require("yargs");
+import fs from "node:fs";
+import http from "node:http";
+import https from "node:https";
+import yargs from "yargs";
+import express from "express";
+import cors from "cors";
 
-const { signalingServer } = require("./signaling");
-const { getTurnCredentials } = require("./turn_credentials");
+import { signalingServer } from "./signaling.js";
+import { turnCredentials } from "@jofr/express-turn-credentials-rest-api";
 
-const argv = yargs
-    .default("cert", "")
-    .default("key", "")
-    .default("port", "")
-    .default("turn-secret", "")
-    .default("allowed-turn-origins", [])
-    .config()
-    .argv
+const argv = yargs(process.argv).options({
+    cert: { type: "string" },
+    key: { type: "string" },
+    port: { type: "number" },
+    turnSecret: { type: "string" },
+    allowedCorsOrigins: { type: "array", default: [] }
+}).config().parseSync();
 
-function createServer(certPath = "", keyPath = "") {
-    if (certPath !== "" && keyPath !== "") {
-        try {
-            const cert = fs.readFileSync(certPath);
-            const key = fs.readFileSync(keyPath);
-            return https.createServer({
-                cert: cert,
-                key: key
-            }, serverRequest);
-        } catch (error) {
-            console.error("Could not read certificate and/or private key (falling back to unsecure connection):", error.message);
-            return http.createServer(serverRequest);
-        }
-    } else {
-        if (argv.cert !== "" || argv.key !== "") {
-            console.error("Only cert or key provided, need both for secure connection (falling back to unsecure connection)");
-        }
-        return http.createServer(serverRequest);
+let secure = false;
+let cert: Buffer, key: Buffer;
+if (argv.cert !== undefined && argv.key !== undefined) {
+    try {
+        cert = fs.readFileSync(argv.cert);
+        key = fs.readFileSync(argv.key);
+        secure = true;
+    } catch (error) {
+        console.error("Could not read certificate and/or private key (falling back to unsecure connection): ", error.message);
+        secure = false;
     }
+} else if (argv.cert !== undefined || argv.key !== undefined) {
+    console.error("Only cert or key provided, need both for secure connection (falling back to unsecure connection)");
 }
 
-function serverRequest(req, res) {
-    if (req.url === "/turn_credentials") {
-        getTurnCredentials(req, res);
-    } else {
-        res.writeHead(404);
-        res.end();
-    }
-}
+const app = express();
+app.use(cors({ origin: argv.allowedCorsOrigins }));
+const server = secure
+             ? https.createServer({ cert: cert, key: key}, app)
+             : http.createServer(app);
 
-const server = createServer(argv.cert, argv.key);
-signalingServer(server);
+signalingServer("/signaling", server);
+app.get("/turn/credentials", turnCredentials({ sharedSecret: argv.turnSecret }));
 
-const port = argv.port !== ""
-    ? parseInt(argv.port)
-    : server instanceof https.Server ? 443 : 80 
+const port = argv.port !== undefined
+           ? argv.port
+           : secure ? 443 : 80;
 
 server.listen(port, () => {
     console.log(`Listening on port ${port}`);
