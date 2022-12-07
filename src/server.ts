@@ -6,6 +6,8 @@ import express from "express";
 import cors from "cors";
 
 import { signalingServer } from "./signaling.js";
+import { podcastApi } from "./podcasts.js";
+import { imageThumbnails } from "./thumbnails.js";
 import { turnCredentials } from "@jofr/express-turn-credentials-rest-api";
 
 const argv = yargs(process.argv).options({
@@ -13,6 +15,8 @@ const argv = yargs(process.argv).options({
     key: { type: "string" },
     port: { type: "number" },
     turnSecret: { type: "string" },
+    podcastApiKey: { type: "string" },
+    podcastApiSecret: { type: "string" },
     allowedCorsOrigins: { type: "array", default: [] }
 }).config().parseSync();
 
@@ -38,6 +42,8 @@ const server = secure
              : http.createServer(app);
 
 signalingServer("/signaling", server);
+podcastApi(app, argv.podcastApiKey, argv.podcastApiSecret);
+imageThumbnails(app);
 app.get("/turn/credentials", turnCredentials({ sharedSecret: argv.turnSecret }));
 
 const port = argv.port !== undefined

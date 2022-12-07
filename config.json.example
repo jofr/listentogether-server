@@ -1,0 +1,8 @@
+{
+    "cert": "path/to/cert",
+    "key": "path/to/key",
+    "turnSecret": "",
+    "podcastApiKey": "",
+    "podcastApiSecret": "",
+    "allowedCorsOrigins": ["http://localhost:1234", "https://listentogether.gitlab.io"]
+}
